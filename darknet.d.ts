@@ -5,20 +5,21 @@ export declare class Darknet {
     net: any;
     names: string[];
     /**
-     * A new instance of rjreddie's darknet. Create an instance as soon as possible in your app, because it takes a while to init.
+     * A new instance of pjreddie's darknet. Create an instance as soon as possible in your app, because it takes a while to init.
      * @param config
      */
     constructor(config: IDarknetConfig);
-    private getArrayFromBuffer(buffer, length, type);
-    private bufferToDetections(buffer, length);
-    private _detectSync(net, meta, image, thresh?, hier_thresh?, nms?);
-    private _detectAsync(net, meta, image, thresh?, hier_thresh?, nms?);
+    private getArrayFromBuffer;
+    private bufferToDetections;
+    private _detectSync;
+    private _detectAsync;
     /**
      * Synchronously detect objects in an image.
      * @param image the destination of the image to be detected
      * @param config optional configuration (threshold, etc.)
      */
     detect(image: string | IBufferImage, config?: IConfig): Detection[];
+    detectFromImage(image: any, config?: IConfig): Detection[];
     /**
      * Get a Darknet Image from path
      * @param path
@@ -37,7 +38,7 @@ export declare class Darknet {
      * @returns {Buffer}
      */
     imageToRGBBuffer(image: any): Buffer;
-    private rgbToDarknet(buffer, w, h, c);
+    private rgbToDarknet;
     /**
      * Transform an RGB buffer to a darknet encoded image
      * @param buffer - rgb buffer
@@ -47,6 +48,7 @@ export declare class Darknet {
      * @returns {IMAGE}
      */
     RGBBufferToImage(buffer: Buffer, w: number, h: number, c: number): any;
+    getImageFromDarknetBuffer(buffer: Float32Array, w: number, h: number, c: number): any;
     /**
      * Transform an RGB buffer to a darknet encoded image
      * @param buffer - rgb buffer
@@ -63,6 +65,7 @@ export declare class Darknet {
      * @returns A promise
      */
     detectAsync(image: string | IBufferImage, config?: IConfig): Promise<Detection[]>;
+    detectFromImageAsync(image: any, config?: IConfig): Promise<Detection[]>;
 }
 export interface IConfig {
     thresh?: number;
