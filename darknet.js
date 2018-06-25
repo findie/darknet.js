@@ -133,6 +133,9 @@ var Darknet = /** @class */ (function () {
         }
         return detections;
     };
+    Darknet.prototype.predictionBufferToDetections = function (buffer, length) {
+        return this.bufferToDetections(buffer, length);
+    };
     Darknet.prototype._detectSync = function (net, meta, image, thresh, hier_thresh, nms) {
         if (!thresh)
             thresh = 0.5;

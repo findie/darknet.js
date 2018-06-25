@@ -115,6 +115,10 @@ export class Darknet {
         return detections;
     }
 
+    predictionBufferToDetections(buffer: Buffer, length: number): Detection[] {
+        return this.bufferToDetections(buffer, length);
+    }
+
     private _detectSync(net: any, meta: any, image: any, thresh?: number, hier_thresh?: number, nms?: number): Detection[] {
         if (!thresh) thresh = 0.5;
         if (!hier_thresh) hier_thresh = 0.5;

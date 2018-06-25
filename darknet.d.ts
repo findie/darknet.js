@@ -11,6 +11,7 @@ export declare class Darknet {
     constructor(config: IDarknetConfig);
     private getArrayFromBuffer;
     private bufferToDetections;
+    predictionBufferToDetections(buffer: Buffer, length: number): Detection[];
     private _detectSync;
     private _detectAsync;
     /**
