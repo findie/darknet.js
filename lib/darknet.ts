@@ -189,6 +189,12 @@ export class Darknet {
         return detection;
     }
 
+    detectFromImage(image: any, config?: IConfig) {
+        if (!config) config = {};
+
+        return this._detectSync(this.net, this.meta, image, config.thresh, config.hier_thresh, config.nms);
+    }
+
     /**
      * Get a Darknet Image from path
      * @param path
@@ -285,6 +291,17 @@ export class Darknet {
         );
     }
 
+    getImageFromDarknetBuffer(buffer: Float32Array, w: number, h: number, c: number) {
+        return this.darknet.float_to_image(
+            w, h, c,
+            new Uint8Array(
+                buffer.buffer,
+                0,
+                buffer.length * Float32Array.BYTES_PER_ELEMENT
+            )
+        );
+    }
+
     /**
      * Transform an RGB buffer to a darknet encoded image
      * @param buffer - rgb buffer
@@ -336,6 +353,15 @@ export class Darknet {
             // memory is owned by JS and will GC eventually
         }
         return detection;
+    }
+
+    async detectFromImageAsync(image: any, config?: IConfig): Promise<Detection[]> {
+        if (!config) config = {};
+        let thresh = (config.thresh) ? config.thresh : 0.5;
+        let hier_thresh = (config.hier_thresh) ? config.hier_thresh : 0.5;
+        let nms = (config.nms) ? config.nms : 0.5;
+
+        return this._detectAsync(this.net, this.meta, image, thresh, hier_thresh, nms);
     }
 
 }

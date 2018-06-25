@@ -14,8 +14,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
         while (_) try {
-            if (f = 1, y && (t = y[op[0] & 2 ? "return" : op[0] ? "throw" : "next"]) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [0, t.value];
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
             switch (op[0]) {
                 case 0: case 1: t = op; break;
                 case 4: _.label++; return { value: op[1], done: false };
@@ -70,7 +70,7 @@ var detection_pointer = ref.refType(DETECTION);
 var library = __dirname + "/libdarknet";
 var Darknet = /** @class */ (function () {
     /**
-     * A new instance of rjreddie's darknet. Create an instance as soon as possible in your app, because it takes a while to init.
+     * A new instance of pjreddie's darknet. Create an instance as soon as possible in your app, because it takes a while to init.
      * @param config
      */
     function Darknet(config) {
@@ -151,8 +151,8 @@ var Darknet = /** @class */ (function () {
     };
     Darknet.prototype._detectAsync = function (net, meta, image, thresh, hier_thresh, nms) {
         return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
             var pnum, dets, num, detections;
+            var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, new Promise(function (res, rej) {
@@ -200,6 +200,11 @@ var Darknet = /** @class */ (function () {
             // memory is owned by JS and will GC eventually
         }
         return detection;
+    };
+    Darknet.prototype.detectFromImage = function (image, config) {
+        if (!config)
+            config = {};
+        return this._detectSync(this.net, this.meta, image, config.thresh, config.hier_thresh, config.nms);
     };
     /**
      * Get a Darknet Image from path
@@ -273,6 +278,9 @@ var Darknet = /** @class */ (function () {
         var floatBuff = this.rgbToDarknet(buffer, w, h, c);
         return this.darknet.float_to_image(w, h, c, new Uint8Array(floatBuff.buffer, 0, floatBuff.length * Float32Array.BYTES_PER_ELEMENT));
     };
+    Darknet.prototype.getImageFromDarknetBuffer = function (buffer, w, h, c) {
+        return this.darknet.float_to_image(w, h, c, new Uint8Array(buffer.buffer, 0, buffer.length * Float32Array.BYTES_PER_ELEMENT));
+    };
     /**
      * Transform an RGB buffer to a darknet encoded image
      * @param buffer - rgb buffer
@@ -283,8 +291,8 @@ var Darknet = /** @class */ (function () {
      */
     Darknet.prototype.RGBBufferToImageAsync = function (buffer, w, h, c) {
         return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
             var floatBuff;
+            var _this = this;
             return __generator(this, function (_a) {
                 floatBuff = this.rgbToDarknet(buffer, w, h, c);
                 return [2 /*return*/, new Promise(function (res, rej) { return _this.darknet.float_to_image.async(w, h, c, new Uint8Array(floatBuff.buffer, 0, floatBuff.length * Float32Array.BYTES_PER_ELEMENT), function (e, image) { return e ? rej(e) : res(image); }); })];
@@ -299,8 +307,8 @@ var Darknet = /** @class */ (function () {
      */
     Darknet.prototype.detectAsync = function (image, config) {
         return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
             var thresh, hier_thresh, nms, darkNetLoadedImage, imageData, _a, detection;
+            var _this = this;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
@@ -335,6 +343,19 @@ var Darknet = /** @class */ (function () {
                         return [3 /*break*/, 7];
                     case 7: return [2 /*return*/, detection];
                 }
+            });
+        });
+    };
+    Darknet.prototype.detectFromImageAsync = function (image, config) {
+        return __awaiter(this, void 0, void 0, function () {
+            var thresh, hier_thresh, nms;
+            return __generator(this, function (_a) {
+                if (!config)
+                    config = {};
+                thresh = (config.thresh) ? config.thresh : 0.5;
+                hier_thresh = (config.hier_thresh) ? config.hier_thresh : 0.5;
+                nms = (config.nms) ? config.nms : 0.5;
+                return [2 /*return*/, this._detectAsync(this.net, this.meta, image, thresh, hier_thresh, nms)];
             });
         });
     };
