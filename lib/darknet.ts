@@ -190,6 +190,7 @@ export class DarknetBase {
 
     protected async _detectAsync(net: any, meta: any, image: any, thresh?: number, hier_thresh?: number, nms?: number): Promise<Detection[]> {
 
+        debug('setting input image');
         await new Promise((res, rej) =>
             this.darknet.network_predict_image.async(net, image, (e: any) => e ? rej(e) : res())
         );

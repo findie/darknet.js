@@ -14,8 +14,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
         while (_) try {
-            if (f = 1, y && (t = y[op[0] & 2 ? "return" : op[0] ? "throw" : "next"]) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [0, t.value];
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
             switch (op[0]) {
                 case 0: case 1: t = op; break;
                 case 4: _.label++; return { value: op[1], done: false };
@@ -202,9 +202,11 @@ var DarknetBase = /** @class */ (function () {
             var _this = this;
             return __generator(this, function (_b) {
                 switch (_b.label) {
-                    case 0: return [4 /*yield*/, new Promise(function (res, rej) {
-                            return _this.darknet.network_predict_image.async(net, image, function (e) { return e ? rej(e) : res(); });
-                        })];
+                    case 0:
+                        debug('setting input image');
+                        return [4 /*yield*/, new Promise(function (res, rej) {
+                                return _this.darknet.network_predict_image.async(net, image, function (e) { return e ? rej(e) : res(); });
+                            })];
                     case 1:
                         _b.sent();
                         return [4 /*yield*/, this.rememberNet()];
