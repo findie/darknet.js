@@ -117,7 +117,7 @@ var DarknetBase = /** @class */ (function () {
     }
     DarknetBase.prototype.resetMemory = function (_a) {
         var _b = (_a === void 0 ? {} : _a).memory, memory = _b === void 0 ? this.memoryCount : _b;
-        debug('resetting memory');
+        debug("resetting memory to " + memory + " slots");
         this.darknet.network_memory_free(this.memory, this.memoryCount);
         this.memoryCount = memory;
         this.makeMemory();
@@ -218,12 +218,15 @@ var DarknetBase = /** @class */ (function () {
                             })];
                     case 3:
                         _a = _b.sent(), dets = _a.buff, num = _a.num;
+                        debug('doing nms');
                         return [4 /*yield*/, new Promise(function (res, rej) {
                                 return _this.darknet.do_nms_obj.async(dets, num, meta.classes, nms, function (e) { return e ? rej(e) : res(); });
                             })];
                     case 4:
                         _b.sent();
+                        debug("interpreting " + num + " result");
                         detections = this.bufferToDetections(dets, num);
+                        debug('finalising');
                         this.darknet.free_detections(dets, num);
                         return [2 /*return*/, detections];
                 }
