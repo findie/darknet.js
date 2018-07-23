@@ -5,10 +5,10 @@ export declare class DarknetBase {
     net: any;
     netSize: number;
     names: string[];
-    memoryIndex: number;
-    memorySlotsUsed: number;
-    memoryCount: number;
-    memory: any;
+    private memoryIndex;
+    private memorySlotsUsed;
+    private memoryCount;
+    private memory;
     /**
      * A new instance of pjreddie's darknet. Create an instance as soon as possible in your app, because it takes a while to init.
      * @param config
@@ -20,21 +20,7 @@ export declare class DarknetBase {
     private getArrayFromBuffer;
     private bufferToDetections;
     predictionBufferToDetections(buffer: Buffer, length: number): Detection[];
-    private _detectSync;
     protected _detectAsync(net: any, meta: any, image: any, thresh?: number, hier_thresh?: number, nms?: number): Promise<Detection[]>;
-    /**
-     * Synchronously detect objects in an image.
-     * @param image the destination of the image to be detected
-     * @param config optional configuration (threshold, etc.)
-     */
-    detect(image: string | IBufferImage, config?: IConfig): Detection[];
-    detectFromImage(image: any, config?: IConfig): Detection[];
-    /**
-     * Get a Darknet Image from path
-     * @param path
-     * @returns IMAGE
-     */
-    getImageFromPath(path: string): any;
     /**
      * Get a Darknet Image async from path
      * @param path
@@ -48,15 +34,6 @@ export declare class DarknetBase {
      */
     imageToRGBBuffer(image: any): Buffer;
     private rgbToDarknet;
-    /**
-     * Transform an RGB buffer to a darknet encoded image
-     * @param buffer - rgb buffer
-     * @param w - width
-     * @param h - height
-     * @param c - channels
-     * @returns {IMAGE}
-     */
-    RGBBufferToImage(buffer: Buffer, w: number, h: number, c: number): any;
     getImageFromDarknetBuffer(buffer: Float32Array, w: number, h: number, c: number): any;
     /**
      * Transform an RGB buffer to a darknet encoded image

@@ -146,18 +146,9 @@ var DarknetBase = /** @class */ (function () {
                 switch (_b.label) {
                     case 0:
                         pnum = ref.alloc('int');
-                        console.log('avg prediction');
                         return [4 /*yield*/, new Promise(function (res, rej) { return _this.darknet.network_avg_predictions.async(_this.net, _this.netSize, _this.memory, _this.memorySlotsUsed, pnum, w, h, thresh, hier, function (e, d) { return e ? rej(e) : res(d); }); })];
                     case 1:
                         buff = _b.sent();
-                        // const buff = this.darknet.network_avg_predictions(
-                        //     this.net,
-                        //     this.netSize,
-                        //     this.memory,
-                        //     this.memorySlotsUsed,
-                        //     pnum,
-                        //     w, h,
-                        //     thresh, hier)
                         return [2 /*return*/, { buff: buff, num: pnum.deref() }];
                 }
             });
@@ -196,22 +187,6 @@ var DarknetBase = /** @class */ (function () {
     DarknetBase.prototype.predictionBufferToDetections = function (buffer, length) {
         return this.bufferToDetections(buffer, length);
     };
-    DarknetBase.prototype._detectSync = function (net, meta, image, thresh, hier_thresh, nms) {
-        if (!thresh)
-            thresh = 0.5;
-        if (!hier_thresh)
-            hier_thresh = 0.5;
-        if (!nms)
-            nms = 0.45;
-        this.darknet.network_predict_image(net, image);
-        var pnum = ref.alloc('int');
-        var dets = this.darknet.get_network_boxes(net, image.w, image.h, thresh, hier_thresh, ref.NULL_POINTER, 0, pnum);
-        var num = pnum.deref();
-        this.darknet.do_nms_obj(dets, num, meta.classes, nms);
-        var detections = this.bufferToDetections(dets, num);
-        this.darknet.free_detections(dets, num);
-        return detections;
-    };
     DarknetBase.prototype._detectAsync = function (net, meta, image, thresh, hier_thresh, nms) {
         return __awaiter(this, void 0, void 0, function () {
             var _a, dets, num, detections;
@@ -234,26 +209,10 @@ var DarknetBase = /** @class */ (function () {
                             })];
                     case 3:
                         _a = _b.sent(), dets = _a.buff, num = _a.num;
-                        // const dets = await new Promise<Buffer>((res, rej) =>
-                        //     this.darknet.get_network_boxes.async(
-                        //         net,
-                        //         image.w, image.h,
-                        //         thresh, hier_thresh,
-                        //         ref.NULL_POINTER, 0, pnum,
-                        //         (err: any, dets: any) => err ? rej(err) : res(dets))
-                        // );
                         return [4 /*yield*/, new Promise(function (res, rej) {
                                 return _this.darknet.do_nms_obj.async(dets, num, meta.classes, nms, function (e) { return e ? rej(e) : res(); });
                             })];
                     case 4:
-                        // const dets = await new Promise<Buffer>((res, rej) =>
-                        //     this.darknet.get_network_boxes.async(
-                        //         net,
-                        //         image.w, image.h,
-                        //         thresh, hier_thresh,
-                        //         ref.NULL_POINTER, 0, pnum,
-                        //         (err: any, dets: any) => err ? rej(err) : res(dets))
-                        // );
                         _b.sent();
                         detections = this.bufferToDetections(dets, num);
                         this.darknet.free_detections(dets, num);
@@ -261,41 +220,6 @@ var DarknetBase = /** @class */ (function () {
                 }
             });
         });
-    };
-    /**
-     * Synchronously detect objects in an image.
-     * @param image the destination of the image to be detected
-     * @param config optional configuration (threshold, etc.)
-     */
-    DarknetBase.prototype.detect = function (image, config) {
-        if (!config)
-            config = {};
-        var darkNetLoadedImage = typeof image === 'string';
-        var imageData = typeof image === 'string' ?
-            this.getImageFromPath(image) :
-            this.RGBBufferToImage(image.b, image.w, image.h, image.c);
-        var detection = this._detectSync(this.net, this.meta, imageData, config.thresh, config.hier_thresh, config.nms);
-        if (darkNetLoadedImage) {
-            // memory is owned by the darknet lib
-            this.darknet.free_image(imageData);
-        }
-        else {
-            // memory is owned by JS and will GC eventually
-        }
-        return detection;
-    };
-    DarknetBase.prototype.detectFromImage = function (image, config) {
-        if (!config)
-            config = {};
-        return this._detectSync(this.net, this.meta, image, config.thresh, config.hier_thresh, config.nms);
-    };
-    /**
-     * Get a Darknet Image from path
-     * @param path
-     * @returns IMAGE
-     */
-    DarknetBase.prototype.getImageFromPath = function (path) {
-        return this.darknet.load_image_color(path, 0, 0);
     };
     /**
      * Get a Darknet Image async from path
@@ -348,18 +272,6 @@ var DarknetBase = /** @class */ (function () {
             }
         }
         return floatBuff;
-    };
-    /**
-     * Transform an RGB buffer to a darknet encoded image
-     * @param buffer - rgb buffer
-     * @param w - width
-     * @param h - height
-     * @param c - channels
-     * @returns {IMAGE}
-     */
-    DarknetBase.prototype.RGBBufferToImage = function (buffer, w, h, c) {
-        var floatBuff = this.rgbToDarknet(buffer, w, h, c);
-        return this.darknet.float_to_image(w, h, c, new Uint8Array(floatBuff.buffer, 0, floatBuff.length * Float32Array.BYTES_PER_ELEMENT));
     };
     DarknetBase.prototype.getImageFromDarknetBuffer = function (buffer, w, h, c) {
         return this.darknet.float_to_image(w, h, c, new Uint8Array(buffer.buffer, 0, buffer.length * Float32Array.BYTES_PER_ELEMENT));
