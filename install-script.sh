@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 if [ ! -d darknet ]; then
-		git clone https://github.com/pjreddie/darknet;
+		git clone git@github.com:findie/darknet.js.git;
 
 		if [ $? -ne 0 ]; then
 				echo "Could not clone darknet repo";
@@ -10,6 +10,9 @@ fi
 
 # dive in the darknet folder and make
 cd darknet
+
+# pull latest changes
+git pull;
 
 # look for exported variables for GPU and CUDNN
 GPU="${DARKNET_BUILD_WITH_GPU:-0}";
