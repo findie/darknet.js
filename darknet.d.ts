@@ -1,5 +1,5 @@
 /// <reference types="node" />
-export declare class Darknet {
+export declare class DarknetBase {
     darknet: any;
     meta: any;
     net: any;
@@ -9,11 +9,10 @@ export declare class Darknet {
      * @param config
      */
     constructor(config: IDarknetConfig);
-    private getArrayFromBuffer;
-    private bufferToDetections;
-    predictionBufferToDetections(buffer: Buffer, length: number): Detection[];
-    private _detectSync;
-    private _detectAsync;
+    private getArrayFromBuffer(buffer, length, type);
+    private bufferToDetections(buffer, length);
+    private _detectSync(net, meta, image, thresh?, hier_thresh?, nms?);
+    private _detectAsync(net, meta, image, thresh?, hier_thresh?, nms?);
     /**
      * Synchronously detect objects in an image.
      * @param image the destination of the image to be detected
@@ -96,3 +95,5 @@ export interface Detection {
         h: number;
     };
 }
+export { Darknet } from './detector';
+export { Darknet as DarknetExperimental } from './detector';
