@@ -39,6 +39,7 @@ var ffi = require("ffi");
 var ref = require("ref");
 var Struct = require("ref-struct");
 var fs_1 = require("fs");
+var debug = require('debug')('darknet');
 var char_pointer = ref.refType('char');
 var float_pointer = ref.refType('float');
 var float_pointer_pointer = ref.coerceType('float **');
@@ -114,10 +115,13 @@ var DarknetBase = /** @class */ (function () {
         this.netSize = this.darknet.network_output_size(this.net);
         this.makeMemory();
     }
+    DarknetBase.prototype.resetMemory = function () {
+        debug('resetting memory');
+        this.darknet.network_memory_free(this.memory, this.memoryCount);
+        this.makeMemory();
+    };
     DarknetBase.prototype.makeMemory = function () {
-        if (this.memory) {
-            this.darknet.network_memory_free(this.memory, this.memoryCount);
-        }
+        debug('making memory');
         this.memoryIndex = 0;
         this.memory = this.darknet.network_memory_make(this.memoryCount, this.netSize);
         this.memorySlotsUsed = 0;
@@ -127,7 +131,9 @@ var DarknetBase = /** @class */ (function () {
             var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, new Promise(function (res, rej) { return _this.darknet.network_remember_memory.async(_this.net, _this.memory, _this.memoryIndex, function (e) { return e ? rej(e) : res(); }); })];
+                    case 0:
+                        debug('remember net', { index: this.memoryIndex, slots: this.memorySlotsUsed });
+                        return [4 /*yield*/, new Promise(function (res, rej) { return _this.darknet.network_remember_memory.async(_this.net, _this.memory, _this.memoryIndex, function (e) { return e ? rej(e) : res(); }); })];
                     case 1:
                         _a.sent();
                         this.memoryIndex = (this.memoryIndex + 1) % this.memoryCount;
@@ -145,6 +151,7 @@ var DarknetBase = /** @class */ (function () {
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
+                        debug('predicting');
                         pnum = ref.alloc('int');
                         return [4 /*yield*/, new Promise(function (res, rej) { return _this.darknet.network_avg_predictions.async(_this.net, _this.netSize, _this.memory, _this.memorySlotsUsed, pnum, w, h, thresh, hier, function (e, d) { return e ? rej(e) : res(d); }); })];
                     case 1:

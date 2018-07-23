@@ -3,6 +3,8 @@ import * as ref from 'ref';
 import * as Struct from 'ref-struct';
 import {readFileSync} from 'fs';
 
+const debug = require('debug')('darknet');
+
 const char_pointer = ref.refType('char');
 const float_pointer = ref.refType('float');
 const float_pointer_pointer = ref.coerceType('float **');
@@ -99,12 +101,15 @@ export class DarknetBase {
         this.makeMemory();
     }
 
+    resetMemory() {
+        debug('resetting memory');
+        this.darknet.network_memory_free(this.memory, this.memoryCount);
+
+        this.makeMemory();
+    }
+
     private makeMemory() {
-
-        if (this.memory) {
-            this.darknet.network_memory_free(this.memory, this.memoryCount);
-        }
-
+        debug('making memory');
         this.memoryIndex = 0;
         this.memory = this.darknet.network_memory_make(this.memoryCount, this.netSize);
 
@@ -112,6 +117,8 @@ export class DarknetBase {
     }
 
     private async rememberNet() {
+
+        debug('remember net', {index: this.memoryIndex, slots: this.memorySlotsUsed});
 
         await new Promise((res, rej) => this.darknet.network_remember_memory.async(
             this.net,
@@ -126,6 +133,7 @@ export class DarknetBase {
 
     private async avgPrediction({w, h, thresh, hier}: { w: number, h: number, thresh: number, hier: number }): Promise<{ buff: Buffer, num: number }> {
 
+        debug('predicting');
         let pnum = ref.alloc('int');
 
         const buff = await new Promise<Buffer>((res, rej) => this.darknet.network_avg_predictions.async(

@@ -14,6 +14,7 @@ export declare class DarknetBase {
      * @param config
      */
     constructor(config: IDarknetConfig);
+    resetMemory(): void;
     private makeMemory;
     private rememberNet;
     private avgPrediction;

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 if [ ! -d darknet ]; then
-		git clone --single-branch -b darknet-net-memory git@github.com:findie/darknet.git;
+		git clone git@github.com:findie/darknet.git;
 
 		if [ $? -ne 0 ]; then
 				echo "Could not clone darknet repo";
