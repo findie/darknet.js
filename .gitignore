@@ -11,3 +11,4 @@ examples/coco.names
 .idea/
 crash.log
 test.js
+package-lock.json
