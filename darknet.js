@@ -115,9 +115,11 @@ var DarknetBase = /** @class */ (function () {
         this.netSize = this.darknet.network_output_size(this.net);
         this.makeMemory();
     }
-    DarknetBase.prototype.resetMemory = function () {
+    DarknetBase.prototype.resetMemory = function (_a) {
+        var _b = (_a === void 0 ? {} : _a).memory, memory = _b === void 0 ? this.memoryCount : _b;
         debug('resetting memory');
         this.darknet.network_memory_free(this.memory, this.memoryCount);
+        this.memoryCount = memory;
         this.makeMemory();
     };
     DarknetBase.prototype.makeMemory = function () {

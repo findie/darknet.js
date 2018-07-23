@@ -101,10 +101,11 @@ export class DarknetBase {
         this.makeMemory();
     }
 
-    resetMemory() {
-        debug('resetting memory');
+    resetMemory({memory = this.memoryCount}: { memory?: number } = {}) {
+        debug(`resetting memory to ${memory} slots`);
         this.darknet.network_memory_free(this.memory, this.memoryCount);
 
+        this.memoryCount = memory;
         this.makeMemory();
     }
 
@@ -202,7 +203,7 @@ export class DarknetBase {
             thresh: thresh as number
         });
 
-
+        debug('doing nms');
         await new Promise((res, rej) =>
             this.darknet.do_nms_obj.async(
                 dets, num, meta.classes, nms,
@@ -210,7 +211,9 @@ export class DarknetBase {
             )
         );
 
+        debug(`interpreting ${num} result`);
         const detections = this.bufferToDetections(dets, num);
+        debug('finalising');
         this.darknet.free_detections(dets, num);
         return detections;
     }
