@@ -42,5 +42,5 @@ cd ..
 
 # if macos make .dylib symlink
 if [[ "$OSTYPE" == "darwin"* ]]; then
-		ln -s libdarknet.so libdarknet.dylib
+		ln -s libdarknet.so libdarknet.dylib || exit 0
 fi
