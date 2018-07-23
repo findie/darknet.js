@@ -1,11 +1,11 @@
 import * as ffi from 'ffi';
 import * as ref from 'ref';
 import * as Struct from 'ref-struct';
-import { readFileSync } from 'fs';
-
+import {readFileSync} from 'fs';
 
 const char_pointer = ref.refType('char');
 const float_pointer = ref.refType('float');
+const float_pointer_pointer = ref.coerceType('float **');
 const int_pointer = ref.refType('int');
 
 const BBOX = Struct({
@@ -45,8 +45,13 @@ export class DarknetBase {
     darknet: any;
     meta: any;
     net: any;
+    netSize: number;
 
     names: string[];
+    memoryIndex: number = 0;
+    memorySlotsUsed: number = 0;
+    memoryCount: number;
+    memory: any;
 
     /**
      * A new instance of pjreddie's darknet. Create an instance as soon as possible in your app, because it takes a while to init.
@@ -62,25 +67,79 @@ export class DarknetBase {
         if (!config.weights) throw new Error("config must include the path to trained weights");
 
         this.names = config.names.filter(a => a.split("").length > 0);
+        this.memoryCount = config.memory || 3;
 
         this.meta = new METADATA;
         this.meta.classes = this.names.length;
         this.meta.names = this.names.join('\n');
 
         this.darknet = ffi.Library(library, {
-            'float_to_image': [ IMAGE, [ 'int', 'int', 'int', float_pointer ]],
-            'load_image_color': [ IMAGE, [ 'string', 'int', 'int' ]],
-            'network_predict_image': [ float_pointer, [ 'pointer', IMAGE ]],
-            'get_network_boxes': [ detection_pointer, [ 'pointer', 'int', 'int', 'float', 'float', int_pointer, 'int', int_pointer ]],
-            'do_nms_obj': [ 'void', [ detection_pointer, 'int', 'int', 'float' ]],
-            'free_image': [ 'void', [ IMAGE ]],
-            'free_detections': [ 'void', [ detection_pointer, 'int' ]],
-            'load_network': [ 'pointer', [ 'string', 'string', 'int' ]],
-            'get_metadata': [ METADATA, [ 'string' ]],
+            'float_to_image': [IMAGE, ['int', 'int', 'int', float_pointer]],
+            'load_image_color': [IMAGE, ['string', 'int', 'int']],
+            'network_predict_image': [float_pointer, ['pointer', IMAGE]],
+            'get_network_boxes': [detection_pointer, ['pointer', 'int', 'int', 'float', 'float', int_pointer, 'int', int_pointer]],
+            'do_nms_obj': ['void', [detection_pointer, 'int', 'int', 'float']],
+            'free_image': ['void', [IMAGE]],
+            'free_detections': ['void', [detection_pointer, 'int']],
+            'load_network': ['pointer', ['string', 'string', 'int']],
+            'get_metadata': [METADATA, ['string']],
+
+            'network_output_size': ['int', ['pointer']],
+            'network_remember_memory': ['void', ['pointer', float_pointer_pointer, 'int']],
+            'network_avg_predictions': [detection_pointer, ['pointer', 'int', float_pointer_pointer, 'int', int_pointer, 'int', 'int', 'float', 'float']],
+
+            'network_memory_make': [float_pointer_pointer, ['int', 'int']],
+            'network_memory_free': ['void', [float_pointer_pointer, 'int']]
         });
 
         this.net = this.darknet.load_network(config.config, config.weights, 0);
 
+        this.netSize = this.darknet.network_output_size(this.net);
+
+        this.makeMemory();
+    }
+
+    private makeMemory() {
+
+        if (this.memory) {
+            this.darknet.network_memory_free(this.memory, this.memoryCount);
+        }
+
+        this.memoryIndex = 0;
+        this.memory = this.darknet.network_memory_make(this.memoryCount, this.netSize);
+
+        this.memorySlotsUsed = 0;
+    }
+
+    private async rememberNet() {
+
+        await new Promise((res, rej) => this.darknet.network_remember_memory.async(
+            this.net,
+            this.memory,
+            this.memoryIndex,
+            (e: any) => e ? rej(e) : res())
+        );
+
+        this.memoryIndex = (this.memoryIndex + 1) % this.memoryCount;
+        this.memorySlotsUsed = Math.min(this.memorySlotsUsed + 1, this.memoryCount);
+    }
+
+    private async avgPrediction({w, h, thresh, hier}: { w: number, h: number, thresh: number, hier: number }): Promise<{ buff: Buffer, num: number }> {
+
+        let pnum = ref.alloc('int');
+
+         const buff = await new Promise<Buffer>((res, rej) => this.darknet.network_avg_predictions.async(
+            this.net,
+            this.netSize,
+            this.memory,
+            this.memorySlotsUsed,
+            pnum,
+            w, h,
+            thresh, hier,
+            (e: any, d: Buffer) => e ? rej(e) : res(d)
+        ));
+
+        return {buff, num: (pnum as any).deref()};
     }
 
     private getArrayFromBuffer(buffer: Buffer, length: number, type: ref.Type): number[] {
@@ -145,17 +204,25 @@ export class DarknetBase {
         await new Promise((res, rej) =>
             this.darknet.network_predict_image.async(net, image, (e: any) => e ? rej(e) : res())
         );
-        let pnum = ref.alloc('int');
 
-        const dets = await new Promise<Buffer>((res, rej) =>
-            this.darknet.get_network_boxes.async(
-                net,
-                image.w, image.h,
-                thresh, hier_thresh,
-                ref.NULL_POINTER, 0, pnum,
-                (err: any, dets: any) => err ? rej(err) : res(dets))
-        );
-        const num = (pnum as any).deref();
+        await this.rememberNet();
+
+        const {buff: dets, num} = await this.avgPrediction({
+            w: image.w as number,
+            h: image.h as number,
+            hier: hier_thresh as number,
+            thresh: thresh as number
+        });
+
+
+        // const dets = await new Promise<Buffer>((res, rej) =>
+        //     this.darknet.get_network_boxes.async(
+        //         net,
+        //         image.w, image.h,
+        //         thresh, hier_thresh,
+        //         ref.NULL_POINTER, 0, pnum,
+        //         (err: any, dets: any) => err ? rej(err) : res(dets))
+        // );
 
         await new Promise((res, rej) =>
             this.darknet.do_nms_obj.async(
@@ -391,6 +458,7 @@ export interface IDarknetConfig {
     config: string;
     names?: string[];
     namefile?: string;
+    memory?: number;
 }
 
 export interface Detection {
@@ -404,5 +472,5 @@ export interface Detection {
     };
 }
 
-export { Darknet } from './detector';
-export { Darknet as DarknetExperimental } from './detector';
+export {Darknet} from './detector';
+export {Darknet as DarknetExperimental} from './detector';

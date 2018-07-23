@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 if [ ! -d darknet ]; then
-		git clone git@github.com:findie/darknet.js.git;
+		git clone --single-branch -b darknet-net-memory git@github.com:findie/darknet.git;
 
 		if [ $? -ne 0 ]; then
 				echo "Could not clone darknet repo";
@@ -12,6 +12,7 @@ fi
 cd darknet
 
 # pull latest changes
+git reset --hard HEAD;
 git pull;
 
 # look for exported variables for GPU and CUDNN
@@ -27,8 +28,9 @@ case "$CUDNN" in
 		*) echo "Interpreting DARKNET_BUILD_WITH_CUDNN=$CUDNN as 0"; CUDNN=0;;
 esac
 
-sed -i -e "s/GPU=[01]/GPU=${GPU}/g" ./Makefile
-sed -i -e "s/CUDNN=[01]/CUDNN=${CUDNN}/g" ./Makefile
+sed -i "" -e "s/GPU=[01]/GPU=${GPU}/g" ./Makefile;
+sed -i "" -e "s/CUDNN=[01]/CUDNN=${CUDNN}/g" ./Makefile;
+sed -i "" -e "s/OPENCV=[01]/OPENCV=0/g" ./Makefile;
 
 make
 

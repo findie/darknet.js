@@ -62,8 +62,8 @@ var Darknet = /** @class */ (function (_super) {
     }
     Darknet.prototype.doAsyncDetection = function (image, config) {
         return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
             var thresh, hier_thresh, nms, darkNetLoadedImage, imageData, _a, detection;
+            var _this = this;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
