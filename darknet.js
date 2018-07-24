@@ -68,14 +68,71 @@ var METADATA = Struct({
     'classes': 'int',
     'names': 'string'
 });
+var NET = Struct({
+    n: 'int',
+    batch: 'int',
+    seen: ref.refType('size_t'),
+    t: ref.refType('int'),
+    epoch: 'float',
+    subdivisions: 'int',
+    layers: 'pointer',
+    output: ref.refType('float'),
+    policy: 'int',
+    learning_rate: 'float',
+    momentum: 'float',
+    decay: 'float',
+    gamma: 'float',
+    scale: 'float',
+    power: 'float',
+    time_steps: 'int',
+    step: 'int',
+    max_batches: 'int',
+    scales: ref.refType('float'),
+    steps: ref.refType('int'),
+    num_steps: 'int',
+    burn_in: 'int',
+    adam: 'int',
+    B1: 'float',
+    B2: 'float',
+    eps: 'float',
+    inputs: 'int',
+    outputs: 'int',
+    truths: 'int',
+    notruth: 'int',
+    h: 'int',
+    w: 'int',
+    c: 'int',
+    max_crop: 'int',
+    min_crop: 'int',
+    max_ratio: 'float',
+    min_ratio: 'float',
+    center: 'int',
+    angle: 'float',
+    aspect: 'float',
+    exposure: 'float',
+    saturation: 'float',
+    hue: 'float',
+    random: 'int',
+    gpu_index: 'int',
+    hierarchy: 'pointer',
+    input: ref.refType('float'),
+    truth: ref.refType('float'),
+    delta: ref.refType('float'),
+    workspace: ref.refType('float'),
+    train: 'int',
+    index: 'int',
+    cost: ref.refType('float'),
+    clip: 'float'
+});
 var detection_pointer = ref.refType(DETECTION);
+var net_pointer = ref.refType(NET);
 var library = __dirname + "/libdarknet";
-var DarknetBase = /** @class */ (function () {
+var Darknet = /** @class */ (function () {
     /**
      * A new instance of pjreddie's darknet. Create an instance as soon as possible in your app, because it takes a while to init.
      * @param config
      */
-    function DarknetBase(config) {
+    function Darknet(config) {
         this.memoryIndex = 0;
         this.memorySlotsUsed = 0;
         if (!config)
@@ -103,39 +160,53 @@ var DarknetBase = /** @class */ (function () {
             'do_nms_obj': ['void', [detection_pointer, 'int', 'int', 'float']],
             'free_image': ['void', [IMAGE]],
             'free_detections': ['void', [detection_pointer, 'int']],
-            'load_network': ['pointer', ['string', 'string', 'int']],
+            'load_network': [net_pointer, ['string', 'string', 'int']],
             'get_metadata': [METADATA, ['string']],
             'network_output_size': ['int', ['pointer']],
             'network_remember_memory': ['void', ['pointer', float_pointer_pointer, 'int']],
             'network_avg_predictions': [detection_pointer, ['pointer', 'int', float_pointer_pointer, 'int', int_pointer, 'int', 'int', 'float', 'float']],
             'network_memory_make': [float_pointer_pointer, ['int', 'int']],
-            'network_memory_free': ['void', [float_pointer_pointer, 'int']]
+            'network_memory_free': ['void', [float_pointer_pointer, 'int']],
+            'set_batch_network': ['void', ['pointer', 'int']],
+            'letterbox_image': [IMAGE, [IMAGE, 'int', 'int']],
         });
-        this.net = this.darknet.load_network(config.config, config.weights, 0);
-        this.netSize = this.darknet.network_output_size(this.net);
+        this.netPointer = this.darknet.load_network(config.config, config.weights, 0);
+        this.net = ref.get(ref.reinterpret(this.netPointer, NET.size, 0), 0, NET);
+        this.darknet.set_batch_network(this.netPointer, 1);
+        this.netSize = this.darknet.network_output_size(this.netPointer);
         this.makeMemory();
     }
-    DarknetBase.prototype.resetMemory = function (_a) {
+    Darknet.prototype.letterboxImage = function (image) {
+        var _this = this;
+        return new Promise(function (res, rej) { return _this.darknet.letterbox_image.async(image, _this.net.w, _this.net.h, function (e, i) { return e ? rej(e) : res(i); }); });
+    };
+    Darknet.prototype.freeImage = function (image) {
+        this.darknet.free_image(image);
+    };
+    Darknet.prototype.freeDetection = function (dets, num) {
+        this.darknet.free_detections(dets, num);
+    };
+    Darknet.prototype.resetMemory = function (_a) {
         var _b = (_a === void 0 ? {} : _a).memory, memory = _b === void 0 ? this.memoryCount : _b;
         debug("resetting memory to " + memory + " slots");
         this.darknet.network_memory_free(this.memory, this.memoryCount);
         this.memoryCount = memory;
         this.makeMemory();
     };
-    DarknetBase.prototype.makeMemory = function () {
+    Darknet.prototype.makeMemory = function () {
         debug('making memory');
         this.memoryIndex = 0;
         this.memory = this.darknet.network_memory_make(this.memoryCount, this.netSize);
         this.memorySlotsUsed = 0;
     };
-    DarknetBase.prototype.rememberNet = function () {
+    Darknet.prototype.rememberNet = function () {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        debug('remember net', { index: this.memoryIndex, slots: this.memorySlotsUsed });
-                        return [4 /*yield*/, new Promise(function (res, rej) { return _this.darknet.network_remember_memory.async(_this.net, _this.memory, _this.memoryIndex, function (e) { return e ? rej(e) : res(); }); })];
+                        debug('remember netPointer', { index: this.memoryIndex, slots: this.memorySlotsUsed });
+                        return [4 /*yield*/, new Promise(function (res, rej) { return _this.darknet.network_remember_memory.async(_this.netPointer, _this.memory, _this.memoryIndex, function (e) { return e ? rej(e) : res(); }); })];
                     case 1:
                         _a.sent();
                         this.memoryIndex = (this.memoryIndex + 1) % this.memoryCount;
@@ -145,7 +216,7 @@ var DarknetBase = /** @class */ (function () {
             });
         });
     };
-    DarknetBase.prototype.avgPrediction = function (_a) {
+    Darknet.prototype.avgPrediction = function (_a) {
         var w = _a.w, h = _a.h, thresh = _a.thresh, hier = _a.hier;
         return __awaiter(this, void 0, void 0, function () {
             var pnum, buff;
@@ -155,7 +226,7 @@ var DarknetBase = /** @class */ (function () {
                     case 0:
                         debug('predicting');
                         pnum = ref.alloc('int');
-                        return [4 /*yield*/, new Promise(function (res, rej) { return _this.darknet.network_avg_predictions.async(_this.net, _this.netSize, _this.memory, _this.memorySlotsUsed, pnum, w, h, thresh, hier, function (e, d) { return e ? rej(e) : res(d); }); })];
+                        return [4 /*yield*/, new Promise(function (res, rej) { return _this.darknet.network_avg_predictions.async(_this.netPointer, _this.netSize, _this.memory, _this.memorySlotsUsed, pnum, w, h, thresh, hier, function (e, d) { return e ? rej(e) : res(d); }); })];
                     case 1:
                         buff = _b.sent();
                         return [2 /*return*/, { buff: buff, num: pnum.deref() }];
@@ -163,14 +234,14 @@ var DarknetBase = /** @class */ (function () {
             });
         });
     };
-    DarknetBase.prototype.getArrayFromBuffer = function (buffer, length, type) {
+    Darknet.prototype.getArrayFromBuffer = function (buffer, length, type) {
         var array = [];
         for (var i = 0; i < length; i++) {
             array.push(ref.get(ref.reinterpret(buffer, type.size, i * type.size), 0, type));
         }
         return array;
     };
-    DarknetBase.prototype.bufferToDetections = function (buffer, length) {
+    Darknet.prototype.bufferToDetections = function (buffer, length) {
         var detections = [];
         for (var i = 0; i < length; i++) {
             var det = ref.get(ref.reinterpret(buffer, 48, i * DETECTION.size), 0, DETECTION);
@@ -193,10 +264,49 @@ var DarknetBase = /** @class */ (function () {
         }
         return detections;
     };
-    DarknetBase.prototype.predictionBufferToDetections = function (buffer, length) {
-        return this.bufferToDetections(buffer, length);
+    Darknet.prototype.detection = function (letterBoxImage, w, h, thresh, hier) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a, dets, num;
+            var _this = this;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        debug('setting input image');
+                        return [4 /*yield*/, new Promise(function (res, rej) {
+                                return _this.darknet.network_predict_image.async(_this.netPointer, letterBoxImage, function (e) { return e ? rej(e) : res(); });
+                            })];
+                    case 1:
+                        _b.sent();
+                        return [4 /*yield*/, this.rememberNet()];
+                    case 2:
+                        _b.sent();
+                        return [4 /*yield*/, this.avgPrediction({ w: w, h: h, hier: hier, thresh: thresh })];
+                    case 3:
+                        _a = _b.sent(), dets = _a.buff, num = _a.num;
+                        return [2 /*return*/, { dets: dets, num: num }];
+                }
+            });
+        });
     };
-    DarknetBase.prototype._detectAsync = function (net, meta, image, thresh, hier_thresh, nms) {
+    Darknet.prototype.NMS = function (dets, num, nms) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, new Promise(function (res, rej) {
+                            return _this.darknet.do_nms_obj.async(dets, num, _this.meta.classes, nms, function (e) { return e ? rej(e) : res(); });
+                        })];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    Darknet.prototype.interpretation = function (dets, num) {
+        return this.bufferToDetections(dets, num);
+    };
+    Darknet.prototype._detectAsync = function (net, meta, image, thresh, hier_thresh, nms) {
         return __awaiter(this, void 0, void 0, function () {
             var _a, dets, num, detections;
             var _this = this;
@@ -236,31 +346,18 @@ var DarknetBase = /** @class */ (function () {
         });
     };
     /**
-     * Get a Darknet Image async from path
-     * @param path
-     * @returns Promise<IMAGE>
-     */
-    DarknetBase.prototype.getImageFromPathAsync = function (path) {
-        return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return __generator(this, function (_a) {
-                return [2 /*return*/, new Promise(function (res, rej) {
-                        return _this.darknet.load_image_color.async(path, 0, 0, function (e, image) { return e ? rej(e) : res(image); });
-                    })];
-            });
-        });
-    };
-    /**
      * convert darknet image to rgb buffer
      * @param {IMAGE} image
      * @returns {Buffer}
      */
-    DarknetBase.prototype.imageToRGBBuffer = function (image) {
+    Darknet.prototype.imageToRGBBuffer = function (image) {
         var w = image.w;
         var h = image.h;
         var c = image.c;
         var imageElements = w * h * c;
-        var imageData = new Float32Array(image.data.reinterpret(imageElements * Float32Array.BYTES_PER_ELEMENT, 0).buffer, 0, imageElements);
+        var imageData = new Float32Array(
+        // @ts-ignore
+        image.data.reinterpret(imageElements * Float32Array.BYTES_PER_ELEMENT, 0).buffer, 0, imageElements);
         var rgbBuffer = Buffer.allocUnsafe(imageData.length);
         var step = c * w;
         var i, k, j;
@@ -273,7 +370,7 @@ var DarknetBase = /** @class */ (function () {
         }
         return rgbBuffer;
     };
-    DarknetBase.prototype.rgbToDarknet = function (buffer, w, h, c) {
+    Darknet.prototype.rgbToDarknet = function (buffer, w, h, c) {
         var imageElements = w * h * c;
         var floatBuff = new Float32Array(imageElements);
         var step = w * c;
@@ -287,7 +384,7 @@ var DarknetBase = /** @class */ (function () {
         }
         return floatBuff;
     };
-    DarknetBase.prototype.getImageFromDarknetBuffer = function (buffer, w, h, c) {
+    Darknet.prototype.getImageFromDarknetBuffer = function (buffer, w, h, c) {
         return this.darknet.float_to_image(w, h, c, new Uint8Array(buffer.buffer, 0, buffer.length * Float32Array.BYTES_PER_ELEMENT));
     };
     /**
@@ -298,7 +395,7 @@ var DarknetBase = /** @class */ (function () {
      * @param c - channels
      * @returns {Promise<IMAGE>}
      */
-    DarknetBase.prototype.RGBBufferToImageAsync = function (buffer, w, h, c) {
+    Darknet.prototype.RGBBufferToImageAsync = function (buffer, w, h, c) {
         return __awaiter(this, void 0, void 0, function () {
             var floatBuff;
             var _this = this;
@@ -308,70 +405,11 @@ var DarknetBase = /** @class */ (function () {
             });
         });
     };
-    /**
-     * Asynchronously detect objects in an image.
-     * @param image
-     * @param config
-     * @returns A promise
-     */
-    DarknetBase.prototype.detectAsync = function (image, config) {
-        return __awaiter(this, void 0, void 0, function () {
-            var thresh, hier_thresh, nms, darkNetLoadedImage, imageData, _a, detection;
-            var _this = this;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
-                    case 0:
-                        if (!config)
-                            config = {};
-                        thresh = (config.thresh) ? config.thresh : 0.5;
-                        hier_thresh = (config.hier_thresh) ? config.hier_thresh : 0.5;
-                        nms = (config.nms) ? config.nms : 0.5;
-                        darkNetLoadedImage = typeof image === 'string';
-                        if (!(typeof image === 'string')) return [3 /*break*/, 2];
-                        return [4 /*yield*/, this.getImageFromPathAsync(image)];
-                    case 1:
-                        _a = _b.sent();
-                        return [3 /*break*/, 4];
-                    case 2: return [4 /*yield*/, this.RGBBufferToImageAsync(image.b, image.w, image.h, image.c)];
-                    case 3:
-                        _a = _b.sent();
-                        _b.label = 4;
-                    case 4:
-                        imageData = _a;
-                        return [4 /*yield*/, this._detectAsync(this.net, this.meta, imageData, thresh, hier_thresh, nms)];
-                    case 5:
-                        detection = _b.sent();
-                        if (!darkNetLoadedImage) return [3 /*break*/, 7];
-                        // memory is owned by the darknet lib
-                        return [4 /*yield*/, new Promise(function (res, rej) {
-                                return _this.darknet.free_image.async(imageData, function (e) { return e ? rej(e) : res(); });
-                            })];
-                    case 6:
-                        // memory is owned by the darknet lib
-                        _b.sent();
-                        return [3 /*break*/, 7];
-                    case 7: return [2 /*return*/, detection];
-                }
-            });
-        });
-    };
-    DarknetBase.prototype.detectFromImageAsync = function (image, config) {
-        return __awaiter(this, void 0, void 0, function () {
-            var thresh, hier_thresh, nms;
-            return __generator(this, function (_a) {
-                if (!config)
-                    config = {};
-                thresh = (config.thresh) ? config.thresh : 0.5;
-                hier_thresh = (config.hier_thresh) ? config.hier_thresh : 0.5;
-                nms = (config.nms) ? config.nms : 0.5;
-                return [2 /*return*/, this._detectAsync(this.net, this.meta, image, thresh, hier_thresh, nms)];
-            });
-        });
-    };
-    return DarknetBase;
+    return Darknet;
 }());
-exports.DarknetBase = DarknetBase;
-var detector_1 = require("./detector");
-exports.Darknet = detector_1.Darknet;
-var detector_2 = require("./detector");
-exports.DarknetExperimental = detector_2.Darknet;
+exports.Darknet = Darknet;
+// export default {
+//     Darknet: DarknetBase
+// }
+// export {Darknet} from './detector';
+// export {Darknet as DarknetExperimental} from './detector';

@@ -38,14 +38,77 @@ const METADATA = Struct({
     'names': 'string'
 });
 
+const NET = Struct({
+    n: 'int',
+    batch: 'int',
+    seen: ref.refType('size_t'),
+    t: ref.refType('int'),
+    epoch: 'float',
+    subdivisions: 'int',
+    layers: 'pointer', // todo maybe?
+    output: ref.refType('float'),
+    policy: 'int',
+    learning_rate: 'float',
+    momentum: 'float',
+    decay: 'float',
+    gamma: 'float',
+    scale: 'float',
+    power: 'float',
+    time_steps: 'int',
+    step: 'int',
+    max_batches: 'int',
+    scales: ref.refType('float'),
+    steps: ref.refType('int'),
+    num_steps: 'int',
+    burn_in: 'int',
+    adam: 'int',
+    B1: 'float',
+    B2: 'float',
+    eps: 'float',
+    inputs: 'int',
+    outputs: 'int',
+    truths: 'int',
+    notruth: 'int',
+    h: 'int',
+    w: 'int',
+    c: 'int',
+    max_crop: 'int',
+    min_crop: 'int',
+    max_ratio: 'float',
+    min_ratio: 'float',
+    center: 'int',
+    angle: 'float',
+    aspect: 'float',
+    exposure: 'float',
+    saturation: 'float',
+    hue: 'float',
+    random: 'int',
+
+    gpu_index: 'int',
+    hierarchy: 'pointer', // todo maybe?
+
+    input: ref.refType('float'),
+    truth: ref.refType('float'),
+    delta: ref.refType('float'),
+    workspace: ref.refType('float'),
+
+    train: 'int',
+    index: 'int',
+    cost: ref.refType('float'),
+    clip: 'float'
+});
+
+
 const detection_pointer = ref.refType(DETECTION);
+const net_pointer = ref.refType(NET);
 
 const library = __dirname + "/libdarknet";
 
-export class DarknetBase {
+export class Darknet {
 
     darknet: any;
     meta: any;
+    netPointer: any;
     net: any;
     netSize: number;
 
@@ -83,7 +146,7 @@ export class DarknetBase {
             'do_nms_obj': ['void', [detection_pointer, 'int', 'int', 'float']],
             'free_image': ['void', [IMAGE]],
             'free_detections': ['void', [detection_pointer, 'int']],
-            'load_network': ['pointer', ['string', 'string', 'int']],
+            'load_network': [net_pointer, ['string', 'string', 'int']],
             'get_metadata': [METADATA, ['string']],
 
             'network_output_size': ['int', ['pointer']],
@@ -91,14 +154,36 @@ export class DarknetBase {
             'network_avg_predictions': [detection_pointer, ['pointer', 'int', float_pointer_pointer, 'int', int_pointer, 'int', 'int', 'float', 'float']],
 
             'network_memory_make': [float_pointer_pointer, ['int', 'int']],
-            'network_memory_free': ['void', [float_pointer_pointer, 'int']]
+            'network_memory_free': ['void', [float_pointer_pointer, 'int']],
+
+            'set_batch_network': ['void', ['pointer', 'int']],
+            'letterbox_image': [IMAGE, [IMAGE, 'int', 'int']],
         });
 
-        this.net = this.darknet.load_network(config.config, config.weights, 0);
+        this.netPointer = this.darknet.load_network(config.config, config.weights, 0);
+        this.net = ref.get(ref.reinterpret(this.netPointer, NET.size, 0), 0, NET);
+        this.darknet.set_batch_network(this.netPointer, 1);
 
-        this.netSize = this.darknet.network_output_size(this.net);
+        this.netSize = this.darknet.network_output_size(this.netPointer);
+
 
         this.makeMemory();
+    }
+
+    letterboxImage(image: Image): Promise<Image> {
+        return new Promise<any>((res, rej) => this.darknet.letterbox_image.async(
+            image,
+            this.net.w, this.net.h,
+            (e: any, i: any) => e ? rej(e) : res(i)
+        ))
+    }
+
+    freeImage(image: Image) {
+        this.darknet.free_image(image);
+    }
+
+    freeDetection(dets: any, num: number) {
+        this.darknet.free_detections(dets, num)
     }
 
     resetMemory({memory = this.memoryCount}: { memory?: number } = {}) {
@@ -119,10 +204,10 @@ export class DarknetBase {
 
     private async rememberNet() {
 
-        debug('remember net', {index: this.memoryIndex, slots: this.memorySlotsUsed});
+        debug('remember netPointer', {index: this.memoryIndex, slots: this.memorySlotsUsed});
 
         await new Promise((res, rej) => this.darknet.network_remember_memory.async(
-            this.net,
+            this.netPointer,
             this.memory,
             this.memoryIndex,
             (e: any) => e ? rej(e) : res())
@@ -138,7 +223,7 @@ export class DarknetBase {
         let pnum = ref.alloc('int');
 
         const buff = await new Promise<Buffer>((res, rej) => this.darknet.network_avg_predictions.async(
-            this.net,
+            this.netPointer,
             this.netSize,
             this.memory,
             this.memorySlotsUsed,
@@ -184,8 +269,33 @@ export class DarknetBase {
         return detections;
     }
 
-    predictionBufferToDetections(buffer: Buffer, length: number): Detection[] {
-        return this.bufferToDetections(buffer, length);
+    async detection(letterBoxImage: any, w: number, h: number, thresh: number, hier: number): Promise<{ dets: Buffer, num: number }> {
+        debug('setting input image');
+        await new Promise((res, rej) =>
+            this.darknet.network_predict_image.async(
+                this.netPointer,
+                letterBoxImage,
+                (e: any) => e ? rej(e) : res()
+            )
+        );
+
+        await this.rememberNet();
+
+        const {buff: dets, num} = await this.avgPrediction({w: w, h: h, hier, thresh});
+        return {dets, num};
+    }
+
+    async NMS(dets: Buffer, num: number, nms: number) {
+        await new Promise((res, rej) =>
+            this.darknet.do_nms_obj.async(
+                dets, num, this.meta.classes, nms,
+                (e: any) => e ? rej(e) : res()
+            )
+        );
+    }
+
+    interpretation(dets: Buffer, num: number) {
+        return this.bufferToDetections(dets, num);
     }
 
     protected async _detectAsync(net: any, meta: any, image: any, thresh?: number, hier_thresh?: number, nms?: number): Promise<Detection[]> {
@@ -220,25 +330,11 @@ export class DarknetBase {
     }
 
     /**
-     * Get a Darknet Image async from path
-     * @param path
-     * @returns Promise<IMAGE>
-     */
-    async getImageFromPathAsync(path: String) {
-        return new Promise((res, rej) =>
-            this.darknet.load_image_color.async(
-                path, 0, 0,
-                (e: any, image: any) => e ? rej(e) : res(image)
-            )
-        );
-    }
-
-    /**
      * convert darknet image to rgb buffer
      * @param {IMAGE} image
      * @returns {Buffer}
      */
-    imageToRGBBuffer(image: any) {
+    imageToRGBBuffer(image: Image) {
         const w = image.w;
         const h = image.h;
         const c = image.c;
@@ -246,6 +342,7 @@ export class DarknetBase {
         const imageElements = w * h * c;
 
         const imageData = new Float32Array(
+            // @ts-ignore
             image.data.reinterpret(imageElements * Float32Array.BYTES_PER_ELEMENT, 0).buffer,
             0,
             imageElements
@@ -285,7 +382,7 @@ export class DarknetBase {
         return floatBuff;
     }
 
-    getImageFromDarknetBuffer(buffer: Float32Array, w: number, h: number, c: number) {
+    getImageFromDarknetBuffer(buffer: Float32Array, w: number, h: number, c: number): Image {
         return this.darknet.float_to_image(
             w, h, c,
             new Uint8Array(
@@ -304,58 +401,18 @@ export class DarknetBase {
      * @param c - channels
      * @returns {Promise<IMAGE>}
      */
-    async RGBBufferToImageAsync(buffer: Buffer, w: number, h: number, c: number): Promise<any> {
+    async RGBBufferToImageAsync(buffer: Buffer, w: number, h: number, c: number): Promise<Image> {
         const floatBuff = this.rgbToDarknet(buffer, w, h, c);
 
-        return new Promise((res, rej) => this.darknet.float_to_image.async(
+        return new Promise<Image>((res, rej) => this.darknet.float_to_image.async(
             w, h, c,
             new Uint8Array(
                 floatBuff.buffer,
                 0,
                 floatBuff.length * Float32Array.BYTES_PER_ELEMENT
             ),
-            (e: any, image: any) => e ? rej(e) : res(image)
+            (e: any, image: Image) => e ? rej(e) : res(image)
         ));
-    }
-
-    /**
-     * Asynchronously detect objects in an image.
-     * @param image
-     * @param config
-     * @returns A promise
-     */
-    async detectAsync(image: string | IBufferImage, config?: IConfig): Promise<Detection[]> {
-        if (!config) config = {};
-        let thresh = (config.thresh) ? config.thresh : 0.5;
-        let hier_thresh = (config.hier_thresh) ? config.hier_thresh : 0.5;
-        let nms = (config.nms) ? config.nms : 0.5;
-
-        const darkNetLoadedImage = typeof image === 'string';
-
-        const imageData = typeof image === 'string' ?
-            await this.getImageFromPathAsync(image) :
-            await this.RGBBufferToImageAsync(image.b, image.w, image.h, image.c);
-
-        const detection = await this._detectAsync(this.net, this.meta, imageData, thresh, hier_thresh, nms);
-
-        if (darkNetLoadedImage) {
-            // memory is owned by the darknet lib
-            await new Promise((res, rej) =>
-                this.darknet.free_image.async(imageData, (e: any) => e ? rej(e) : res())
-            );
-        } else {
-            // memory is owned by JS and will GC eventually
-        }
-        return detection;
-    }
-
-    async detectFromImageAsync(image: any, config?: IConfig): Promise<Detection[]> {
-        if (!config) config = {};
-        let thresh = (config.thresh) ? config.thresh : 0.5;
-        let hier_thresh = (config.hier_thresh) ? config.hier_thresh : 0.5;
-        let nms = (config.nms) ? config.nms : 0.5;
-
-        return this._detectAsync(this.net, this.meta, image, thresh, hier_thresh, nms);
     }
 
 }
@@ -394,5 +451,16 @@ export interface Detection {
     };
 }
 
-export {Darknet} from './detector';
-export {Darknet as DarknetExperimental} from './detector';
+export interface Image {
+    w: number,
+    h: number,
+    c: number,
+    data: Buffer
+}
+
+// export default {
+//     Darknet: DarknetBase
+// }
+
+// export {Darknet} from './detector';
+// export {Darknet as DarknetExperimental} from './detector';

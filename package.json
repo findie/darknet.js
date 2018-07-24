@@ -1,6 +1,6 @@
 {
   "name": "darknet",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "",
   "main": "darknet.js",
   "typings": "darknet.d.ts",
@@ -20,7 +20,10 @@
     "object detection",
     "machine learning"
   ],
-  "author": "Bennett Hardwick <bennetthardwick@icloud.com> (bennetthardwick.com)",
+  "authors": [
+    "Bennett Hardwick <bennetthardwick@icloud.com> (bennetthardwick.com)",
+    "stefan@findie.me"
+  ],
   "license": "MIT",
   "dependencies": {
     "debug": "^3.1.0",
