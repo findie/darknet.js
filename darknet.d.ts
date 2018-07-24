@@ -15,12 +15,14 @@ export declare class Darknet {
      * @param config
      */
     constructor(config: IDarknetConfig);
+    dispose(): void;
     letterboxImage(image: Image): Promise<Image>;
     freeImage(image: Image): void;
     freeDetection(dets: any, num: number): void;
     resetMemory({ memory }?: {
         memory?: number;
     }): void;
+    private freeMemory;
     private makeMemory;
     private rememberNet;
     private avgPrediction;

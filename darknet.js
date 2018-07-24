@@ -14,8 +14,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
         while (_) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
+            if (f = 1, y && (t = y[op[0] & 2 ? "return" : op[0] ? "throw" : "next"]) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [0, t.value];
             switch (op[0]) {
                 case 0: case 1: t = op; break;
                 case 4: _.label++; return { value: op[1], done: false };
@@ -169,6 +169,7 @@ var Darknet = /** @class */ (function () {
             'network_memory_free': ['void', [float_pointer_pointer, 'int']],
             'set_batch_network': ['void', ['pointer', 'int']],
             'letterbox_image': [IMAGE, [IMAGE, 'int', 'int']],
+            'free_network': ['void', [net_pointer]]
         });
         this.netPointer = this.darknet.load_network(config.config, config.weights, 0);
         this.net = ref.get(ref.reinterpret(this.netPointer, NET.size, 0), 0, NET);
@@ -176,6 +177,10 @@ var Darknet = /** @class */ (function () {
         this.netSize = this.darknet.network_output_size(this.netPointer);
         this.makeMemory();
     }
+    Darknet.prototype.dispose = function () {
+        this.darknet.free_network(this.netPointer);
+        this.freeMemory();
+    };
     Darknet.prototype.letterboxImage = function (image) {
         var _this = this;
         return new Promise(function (res, rej) { return _this.darknet.letterbox_image.async(image, _this.net.w, _this.net.h, function (e, i) { return e ? rej(e) : res(i); }); });
@@ -189,9 +194,12 @@ var Darknet = /** @class */ (function () {
     Darknet.prototype.resetMemory = function (_a) {
         var _b = (_a === void 0 ? {} : _a).memory, memory = _b === void 0 ? this.memoryCount : _b;
         debug("resetting memory to " + memory + " slots");
-        this.darknet.network_memory_free(this.memory, this.memoryCount);
+        this.freeMemory();
         this.memoryCount = memory;
         this.makeMemory();
+    };
+    Darknet.prototype.freeMemory = function () {
+        this.darknet.network_memory_free(this.memory, this.memoryCount);
     };
     Darknet.prototype.makeMemory = function () {
         debug('making memory');

@@ -158,6 +158,8 @@ export class Darknet {
 
             'set_batch_network': ['void', ['pointer', 'int']],
             'letterbox_image': [IMAGE, [IMAGE, 'int', 'int']],
+
+            'free_network': ['void', [net_pointer]]
         });
 
         this.netPointer = this.darknet.load_network(config.config, config.weights, 0);
@@ -168,6 +170,11 @@ export class Darknet {
 
 
         this.makeMemory();
+    }
+
+    dispose() {
+        this.darknet.free_network(this.netPointer);
+        this.freeMemory();
     }
 
     letterboxImage(image: Image): Promise<Image> {
@@ -188,10 +195,13 @@ export class Darknet {
 
     resetMemory({memory = this.memoryCount}: { memory?: number } = {}) {
         debug(`resetting memory to ${memory} slots`);
-        this.darknet.network_memory_free(this.memory, this.memoryCount);
-
+        this.freeMemory();
         this.memoryCount = memory;
         this.makeMemory();
+    }
+
+    private freeMemory() {
+        this.darknet.network_memory_free(this.memory, this.memoryCount);
     }
 
     private makeMemory() {
