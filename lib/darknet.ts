@@ -159,7 +159,8 @@ export class Darknet {
             'set_batch_network': ['void', ['pointer', 'int']],
             'letterbox_image': [IMAGE, [IMAGE, 'int', 'int']],
 
-            'free_network': ['void', [net_pointer]]
+            'free_network': ['void', [net_pointer]],
+            'copy_image': [IMAGE, [IMAGE]]
         });
 
         this.netPointer = this.darknet.load_network(config.config, config.weights, 0);
@@ -178,11 +179,17 @@ export class Darknet {
     }
 
     letterboxImage(image: Image): Promise<Image> {
-        return new Promise<any>((res, rej) => this.darknet.letterbox_image.async(
-            image,
+        const myCopy = this.darknet.copy_image(image);
+
+        const letterboxed = new Promise<any>((res, rej) => this.darknet.letterbox_image.async(
+            myCopy,
             this.net.w, this.net.h,
             (e: any, i: any) => e ? rej(e) : res(i)
-        ))
+        ));
+
+        this.freeImage(myCopy);
+
+        return letterboxed;
     }
 
     freeImage(image: Image) {
@@ -414,7 +421,7 @@ export class Darknet {
     async RGBBufferToImageAsync(buffer: Buffer, w: number, h: number, c: number): Promise<Image> {
         const floatBuff = this.rgbToDarknet(buffer, w, h, c);
 
-        return new Promise<Image>((res, rej) => this.darknet.float_to_image.async(
+        const data = await new Promise<Image>((res, rej) => this.darknet.float_to_image.async(
             w, h, c,
             new Uint8Array(
                 floatBuff.buffer,
@@ -423,6 +430,9 @@ export class Darknet {
             ),
             (e: any, image: Image) => e ? rej(e) : res(image)
         ));
+
+        debugger;
+        return data;
     }
 
 }

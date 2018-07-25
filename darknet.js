@@ -169,7 +169,8 @@ var Darknet = /** @class */ (function () {
             'network_memory_free': ['void', [float_pointer_pointer, 'int']],
             'set_batch_network': ['void', ['pointer', 'int']],
             'letterbox_image': [IMAGE, [IMAGE, 'int', 'int']],
-            'free_network': ['void', [net_pointer]]
+            'free_network': ['void', [net_pointer]],
+            'copy_image': [IMAGE, [IMAGE]]
         });
         this.netPointer = this.darknet.load_network(config.config, config.weights, 0);
         this.net = ref.get(ref.reinterpret(this.netPointer, NET.size, 0), 0, NET);
@@ -183,7 +184,10 @@ var Darknet = /** @class */ (function () {
     };
     Darknet.prototype.letterboxImage = function (image) {
         var _this = this;
-        return new Promise(function (res, rej) { return _this.darknet.letterbox_image.async(image, _this.net.w, _this.net.h, function (e, i) { return e ? rej(e) : res(i); }); });
+        var myCopy = this.darknet.copy_image(image);
+        var letterboxed = new Promise(function (res, rej) { return _this.darknet.letterbox_image.async(myCopy, _this.net.w, _this.net.h, function (e, i) { return e ? rej(e) : res(i); }); });
+        this.freeImage(myCopy);
+        return letterboxed;
     };
     Darknet.prototype.freeImage = function (image) {
         this.darknet.free_image(image);
@@ -405,11 +409,18 @@ var Darknet = /** @class */ (function () {
      */
     Darknet.prototype.RGBBufferToImageAsync = function (buffer, w, h, c) {
         return __awaiter(this, void 0, void 0, function () {
-            var floatBuff;
+            var floatBuff, data;
             var _this = this;
             return __generator(this, function (_a) {
-                floatBuff = this.rgbToDarknet(buffer, w, h, c);
-                return [2 /*return*/, new Promise(function (res, rej) { return _this.darknet.float_to_image.async(w, h, c, new Uint8Array(floatBuff.buffer, 0, floatBuff.length * Float32Array.BYTES_PER_ELEMENT), function (e, image) { return e ? rej(e) : res(image); }); })];
+                switch (_a.label) {
+                    case 0:
+                        floatBuff = this.rgbToDarknet(buffer, w, h, c);
+                        return [4 /*yield*/, new Promise(function (res, rej) { return _this.darknet.float_to_image.async(w, h, c, new Uint8Array(floatBuff.buffer, 0, floatBuff.length * Float32Array.BYTES_PER_ELEMENT), function (e, image) { return e ? rej(e) : res(image); }); })];
+                    case 1:
+                        data = _a.sent();
+                        debugger;
+                        return [2 /*return*/, data];
+                }
             });
         });
     };
