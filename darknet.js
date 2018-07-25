@@ -14,8 +14,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
         while (_) try {
-            if (f = 1, y && (t = y[op[0] & 2 ? "return" : op[0] ? "throw" : "next"]) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [0, t.value];
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
             switch (op[0]) {
                 case 0: case 1: t = op; break;
                 case 4: _.label++; return { value: op[1], done: false };
@@ -183,11 +183,21 @@ var Darknet = /** @class */ (function () {
         this.freeMemory();
     };
     Darknet.prototype.letterboxImage = function (image) {
-        var _this = this;
-        var myCopy = this.darknet.copy_image(image);
-        var letterboxed = new Promise(function (res, rej) { return _this.darknet.letterbox_image.async(myCopy, _this.net.w, _this.net.h, function (e, i) { return e ? rej(e) : res(i); }); });
-        this.freeImage(myCopy);
-        return letterboxed;
+        return __awaiter(this, void 0, void 0, function () {
+            var myCopy, letterboxed;
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        myCopy = this.darknet.copy_image(image);
+                        return [4 /*yield*/, new Promise(function (res, rej) { return _this.darknet.letterbox_image.async(myCopy, _this.net.w, _this.net.h, function (e, i) { return e ? rej(e) : res(i); }); })];
+                    case 1:
+                        letterboxed = _a.sent();
+                        this.freeImage(myCopy);
+                        return [2 /*return*/, letterboxed];
+                }
+            });
+        });
     };
     Darknet.prototype.freeImage = function (image) {
         this.darknet.free_image(image);

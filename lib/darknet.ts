@@ -178,10 +178,10 @@ export class Darknet {
         this.freeMemory();
     }
 
-    letterboxImage(image: Image): Promise<Image> {
+    async letterboxImage(image: Image): Promise<Image> {
         const myCopy = this.darknet.copy_image(image);
 
-        const letterboxed = new Promise<any>((res, rej) => this.darknet.letterbox_image.async(
+        const letterboxed = await new Promise<any>((res, rej) => this.darknet.letterbox_image.async(
             myCopy,
             this.net.w, this.net.h,
             (e: any, i: any) => e ? rej(e) : res(i)
